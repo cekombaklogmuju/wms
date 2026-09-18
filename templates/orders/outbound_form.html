@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Create Outbound Order - WMS{% endblock %}
+{% block page_title %}Create Outbound Order{% endblock %}
+
+{% block content %}
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-semibold">Order Details</div>
+        <div class="card-body">
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                <p class="mb-0">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="row g-3">
+                {% for field in form %}
+                <div class="col-md-6">
+                    <label for="{{ field.id_for_label }}" class="form-label">
+                        {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in field.errors %}{{ error }}{% endfor %}
+                    </div>
+                    {% endif %}
+                    {% if field.help_text %}
+                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Order Items</span>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="add-row">
+                <i class="bi bi-plus-lg"></i> Add Item
+            </button>
+        </div>
+        <div class="table-responsive">
+            {{ formset.management_form }}
+
+            {% if formset.non_form_errors %}
+            <div class="alert alert-danger m-3">
+                {% for error in formset.non_form_errors %}
+                <p class="mb-0">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <table class="table align-middle mb-0" id="formset-table">
+                <thead>
+                    <tr>
+                        {% for field in formset.forms.0 %}
+                            {% if not field.is_hidden %}
+                            <th>{{ field.label }}</th>
+                            {% endif %}
+                        {% endfor %}
+                        <th style="width:60px"></th>
+                    </tr>
+                </thead>
+                <tbody id="formset-body">
+                    {% for item_form in formset %}
+                    <tr class="formset-row">
+                        {% for hidden in item_form.hidden_fields %}
+                            {{ hidden }}
+                        {% endfor %}
+                        {% for field in item_form.visible_fields %}
+                        <td>
+                            {{ field }}
+                            {% if field.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in field.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                        <td>
+                            {% if not forloop.first or formset.forms|length > 1 %}
+                            <button type="button" class="btn btn-outline-danger btn-sm remove-row">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg"></i> Save Order
+        </button>
+        <a href="{% url 'orders:outbound-list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    #formset-table .form-control,
+    #formset-table .form-select {
+        min-width: 120px;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const tbody = document.getElementById('formset-body');
+    const totalForms = document.getElementById('id_items-TOTAL_FORMS') ||
+                       document.querySelector('[name$="-TOTAL_FORMS"]');
+    const addBtn = document.getElementById('add-row');
+
+    addBtn.addEventListener('click', function() {
+        const rows = tbody.querySelectorAll('.formset-row');
+        const lastRow = rows[rows.length - 1];
+        const newRow = lastRow.cloneNode(true);
+        const formIdx = parseInt(totalForms.value);
+
+        newRow.innerHTML = newRow.innerHTML.replace(
+            new RegExp('(items|form)-(\\d+)-', 'g'),
+            '$1-' + formIdx + '-'
+        );
+        newRow.innerHTML = newRow.innerHTML.replace(
+            new RegExp('(items|form)_(\\d+)_', 'g'),
+            '$1_' + formIdx + '_'
+        );
+
+        newRow.querySelectorAll('input:not([type=hidden]), select').forEach(function(el) {
+            if (el.type === 'checkbox') {
+                el.checked = false;
+            } else {
+                el.value = '';
+            }
+        });
+
+        const deleteField = newRow.querySelector('input[name$="-DELETE"]');
+        if (deleteField) deleteField.value = '';
+
+        const tdLast = newRow.querySelector('td:last-child');
+        if (!tdLast.querySelector('.remove-row')) {
+            tdLast.innerHTML = '<button type="button" class="btn btn-outline-danger btn-sm remove-row"><i class="bi bi-trash"></i></button>';
+        }
+
+        tbody.appendChild(newRow);
+        totalForms.value = formIdx + 1;
+    });
+
+    tbody.addEventListener('click', function(e) {
+        const btn = e.target.closest('.remove-row');
+        if (!btn) return;
+        const rows = tbody.querySelectorAll('.formset-row');
+        if (rows.length <= 1) return;
+
+        const row = btn.closest('.formset-row');
+        const deleteField = row.querySelector('input[name$="-DELETE"]');
+        if (deleteField) {
+            deleteField.value = 'on';
+            row.style.display = 'none';
+        } else {
+            row.remove();
+            totalForms.value = parseInt(totalForms.value) - 1;
+            tbody.querySelectorAll('.formset-row').forEach(function(r, idx) {
+                r.innerHTML = r.innerHTML.replace(
+                    new RegExp('(items|form)-(\\d+)-', 'g'),
+                    '$1-' + idx + '-'
+                );
+                r.innerHTML = r.innerHTML.replace(
+                    new RegExp('(items|form)_(\\d+)_', 'g'),
+                    '$1_' + idx + '_'
+                );
+            });
+        }
+    });
+})();
+</script>
+{% endblock %}

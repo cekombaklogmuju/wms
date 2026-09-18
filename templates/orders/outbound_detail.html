@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}{{ order.order_number }} - Outbound Order - WMS{% endblock %}
+{% block page_title %}{{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold">Order Information</div>
+            <div class="card-body">
+                <table class="table table-borderless table-sm mb-0">
+                    <tr>
+                        <th class="text-muted" style="width:40%">Order Number</th>
+                        <td>{{ order.order_number }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Customer</th>
+                        <td>{{ order.customer_name }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Customer Address</th>
+                        <td>{{ order.customer_address|default:"—"|linebreaksbr }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Warehouse</th>
+                        <td>{{ order.warehouse }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Status</th>
+                        <td>
+                            <span class="badge bg-{% if order.status == 'PENDING' %}warning{% elif order.status == 'PROCESSING' %}info{% elif order.status == 'SHIPPED' %}primary{% elif order.status == 'DELIVERED' %}success{% elif order.status == 'CANCELLED' %}danger{% else %}secondary{% endif %}">
+                                {{ order.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Shipping Date</th>
+                        <td>{{ order.shipping_date|date:"M d, Y"|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Delivery Date</th>
+                        <td>{{ order.delivery_date|date:"M d, Y"|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Created By</th>
+                        <td>{{ order.created_by|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Notes</th>
+                        <td>{{ order.notes|default:"—"|linebreaksbr }}</td>
+                    </tr>
+                </table>
+            </div>
+            {% if order.status == "PENDING" or order.status == "PROCESSING" %}
+            <div class="card-footer bg-white">
+                {% if order.status == "PENDING" %}
+                <form method="post" action="{% url 'orders:outbound-process' pk=order.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-info btn-sm w-100"
+                            onclick="return confirm('Start processing this order?')">
+                        <i class="bi bi-gear"></i> Process Order
+                    </button>
+                </form>
+                {% elif order.status == "PROCESSING" %}
+                <form method="post" action="{% url 'orders:outbound-ship' pk=order.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary btn-sm w-100"
+                            onclick="return confirm('Mark this order as shipped?')">
+                        <i class="bi bi-truck"></i> Ship Order
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <a href="{% url 'orders:outbound-list' %}" class="btn btn-outline-secondary btn-sm mt-3">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold">Order Items</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th class="text-end">Quantity</th>
+                            <th class="text-end">Unit Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item.product }}</td>
+                            <td class="text-end">{{ item.quantity }}</td>
+                            <td class="text-end">Rp {{ item.unit_price|floatformat:0|intcomma }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">No items in this order.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

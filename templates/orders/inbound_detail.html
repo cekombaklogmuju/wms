@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}{{ order.order_number }} - Inbound Order - WMS{% endblock %}
+{% block page_title %}{{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold">Order Information</div>
+            <div class="card-body">
+                <table class="table table-borderless table-sm mb-0">
+                    <tr>
+                        <th class="text-muted" style="width:40%">Order Number</th>
+                        <td>{{ order.order_number }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Supplier</th>
+                        <td>{{ order.supplier }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Warehouse</th>
+                        <td>{{ order.warehouse }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Status</th>
+                        <td>
+                            <span class="badge bg-{% if order.status == 'PENDING' %}warning{% elif order.status == 'RECEIVED' %}success{% elif order.status == 'PARTIAL' %}info{% elif order.status == 'CANCELLED' %}danger{% else %}secondary{% endif %}">
+                                {{ order.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Expected Date</th>
+                        <td>{{ order.expected_date|date:"M d, Y"|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Received Date</th>
+                        <td>{{ order.received_date|date:"M d, Y"|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Created By</th>
+                        <td>{{ order.created_by|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Notes</th>
+                        <td>{{ order.notes|default:"—"|linebreaksbr }}</td>
+                    </tr>
+                </table>
+            </div>
+            {% if order.status == "PENDING" %}
+            <div class="card-footer bg-white">
+                <form method="post" action="{% url 'orders:inbound-receive' pk=order.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-sm w-100"
+                            onclick="return confirm('Mark this order as received?')">
+                        <i class="bi bi-check-circle"></i> Receive Order
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+
+        <a href="{% url 'orders:inbound-list' %}" class="btn btn-outline-secondary btn-sm mt-3">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold">Order Items</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th class="text-end">Qty Ordered</th>
+                            <th class="text-end">Qty Received</th>
+                            <th class="text-end">Unit Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item.product }}</td>
+                            <td class="text-end">{{ item.quantity_ordered }}</td>
+                            <td class="text-end">{{ item.quantity_received }}</td>
+                            <td class="text-end">Rp {{ item.unit_cost|floatformat:0|intcomma }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">No items in this order.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}Order Report - WMS{% endblock %}
+{% block page_title %}Order Report{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="status" class="form-label">Status</label>
+                <select name="status" id="status" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="PENDING" {% if selected_status == "PENDING" %}selected{% endif %}>Pending</option>
+                    <option value="APPROVED" {% if selected_status == "APPROVED" %}selected{% endif %}>Approved</option>
+                    <option value="PROCESSING" {% if selected_status == "PROCESSING" %}selected{% endif %}>Processing</option>
+                    <option value="COMPLETED" {% if selected_status == "COMPLETED" %}selected{% endif %}>Completed</option>
+                    <option value="CANCELLED" {% if selected_status == "CANCELLED" %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="start_date" class="form-label">Start Date</label>
+                <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date|default:'' }}">
+            </div>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label">End Date</label>
+                <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date|default:'' }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel"></i> Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card border-start border-success border-4">
+            <div class="card-body">
+                <div class="stat-label">Total Inbound</div>
+                <div class="stat-value text-success">{{ total_inbound|default:0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card border-start border-danger border-4">
+            <div class="card-body">
+                <div class="stat-label">Total Outbound</div>
+                <div class="stat-value text-danger">{{ total_outbound|default:0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">Inbound by Status</div>
+                {% for item in inbound_by_status %}
+                <div class="d-flex justify-content-between small mt-1">
+                    <span>{{ item.status }}</span>
+                    <span class="fw-semibold">{{ item.count }}</span>
+                </div>
+                {% empty %}
+                <div class="text-muted small mt-1">No data</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">Outbound by Status</div>
+                {% for item in outbound_by_status %}
+                <div class="d-flex justify-content-between small mt-1">
+                    <span>{{ item.status }}</span>
+                    <span class="fw-semibold">{{ item.count }}</span>
+                </div>
+                {% empty %}
+                <div class="text-muted small mt-1">No data</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Inbound Orders -->
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="bi bi-arrow-down-circle text-success"></i> Inbound Orders</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Order #</th>
+                        <th>Supplier</th>
+                        <th>Warehouse</th>
+                        <th>Status</th>
+                        <th>Expected Date</th>
+                        <th>Created At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in inbound_orders %}
+                    <tr>
+                        <td><code>{{ order.order_number }}</code></td>
+                        <td>{{ order.supplier.name }}</td>
+                        <td>{{ order.warehouse.name }}</td>
+                        <td>
+                            {% if order.status == "COMPLETED" %}
+                            <span class="badge bg-success">{{ order.status }}</span>
+                            {% elif order.status == "CANCELLED" %}
+                            <span class="badge bg-danger">{{ order.status }}</span>
+                            {% elif order.status == "PROCESSING" %}
+                            <span class="badge bg-info text-dark">{{ order.status }}</span>
+                            {% elif order.status == "APPROVED" %}
+                            <span class="badge bg-primary">{{ order.status }}</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">{{ order.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ order.expected_date|date:"M d, Y"|default:"-" }}</td>
+                        <td>{{ order.created_at|date:"M d, Y H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">No inbound orders found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Outbound Orders -->
+<div class="card">
+    <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="bi bi-arrow-up-circle text-danger"></i> Outbound Orders</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Order #</th>
+                        <th>Customer</th>
+                        <th>Warehouse</th>
+                        <th>Status</th>
+                        <th>Shipping Date</th>
+                        <th>Created At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in outbound_orders %}
+                    <tr>
+                        <td><code>{{ order.order_number }}</code></td>
+                        <td>{{ order.customer.name }}</td>
+                        <td>{{ order.warehouse.name }}</td>
+                        <td>
+                            {% if order.status == "COMPLETED" %}
+                            <span class="badge bg-success">{{ order.status }}</span>
+                            {% elif order.status == "CANCELLED" %}
+                            <span class="badge bg-danger">{{ order.status }}</span>
+                            {% elif order.status == "PROCESSING" %}
+                            <span class="badge bg-info text-dark">{{ order.status }}</span>
+                            {% elif order.status == "APPROVED" %}
+                            <span class="badge bg-primary">{{ order.status }}</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">{{ order.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ order.shipping_date|date:"M d, Y"|default:"-" }}</td>
+                        <td>{{ order.created_at|date:"M d, Y H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">No outbound orders found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,293 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Dashboard - Warehouse Management System{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-icon {
+        width: 48px; height: 48px;
+        border-radius: .5rem;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.35rem;
+    }
+    .stat-icon-blue  { background: #dbeafe; color: #2563eb; }
+    .stat-icon-green { background: #dcfce7; color: #16a34a; }
+    .stat-icon-orange { background: #fff7ed; color: #ea580c; }
+    .stat-icon-red   { background: #fef2f2; color: #dc2626; }
+
+    .value-card .stat-value { font-size: 2rem; }
+
+    .stock-bar-bg {
+        background: #e2e8f0;
+        border-radius: .25rem;
+        height: 1.25rem;
+        overflow: hidden;
+    }
+    .stock-bar-fill {
+        background: linear-gradient(90deg, #3b82f6, #6366f1);
+        height: 100%;
+        border-radius: .25rem;
+        transition: width .4s ease;
+        min-width: 2px;
+    }
+    .movement-type-in  { background: #dcfce7; color: #16a34a; }
+    .movement-type-out { background: #fef2f2; color: #dc2626; }
+    .movement-type-adj { background: #fff7ed; color: #ea580c; }
+    .movement-type-trf { background: #dbeafe; color: #2563eb; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Row 1: Stat Cards ─────────────────────────────────── #}
+<div class="row g-3 mb-3">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon stat-icon-blue">
+                    <i class="bi bi-box"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ total_products }}</div>
+                    <div class="stat-label">Products</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon stat-icon-green">
+                    <i class="bi bi-building"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ total_warehouses }}</div>
+                    <div class="stat-label">Warehouses</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon stat-icon-orange">
+                    <i class="bi bi-arrow-down-circle"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ pending_inbound }}</div>
+                    <div class="stat-label">Pending Inbound</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon stat-icon-red">
+                    <i class="bi bi-arrow-up-circle"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ pending_outbound }}</div>
+                    <div class="stat-label">Pending Outbound</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Row 2: Total Stock Value ──────────────────────────── #}
+<div class="row g-3 mb-3">
+    <div class="col-12">
+        <div class="card stat-card value-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon stat-icon-green">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div>
+                    <div class="stat-value">Rp {{ total_stock_value|floatformat:0|intcomma }}</div>
+                    <div class="stat-label">Total Stock Value</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Row 3: Low Stock & Recent Movements ──────────────── #}
+<div class="row g-3 mb-3">
+    {# Left: Low Stock Alerts #}
+    <div class="col-lg-6">
+        <div class="card stat-card h-100">
+            <div class="card-header bg-white border-bottom d-flex align-items-center gap-2">
+                <i class="bi bi-exclamation-triangle text-warning"></i>
+                <span class="fw-semibold">Low Stock Alerts</span>
+                {% if low_stock_items %}
+                    <span class="badge bg-danger ms-auto">{{ low_stock_items|length }}</span>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                {% if low_stock_items %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Warehouse</th>
+                                <th class="text-end">Qty</th>
+                                <th class="text-end">Reorder Lvl</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in low_stock_items %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'inventory:product-detail' pk=item.product.pk %}" class="text-decoration-none fw-medium">
+                                        {{ item.product.name }}
+                                    </a>
+                                </td>
+                                <td class="text-muted">{{ item.warehouse.name }}</td>
+                                <td class="text-end fw-semibold">{{ item.quantity }}</td>
+                                <td class="text-end">{{ item.product.reorder_level }}</td>
+                                <td class="text-end">
+                                    {% if item.is_low_stock %}
+                                        <span class="badge badge-low">Low</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-check-circle fs-3 d-block mb-2 text-success"></i>
+                    All stock levels healthy
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# Right: Recent Movements #}
+    <div class="col-lg-6">
+        <div class="card stat-card h-100">
+            <div class="card-header bg-white border-bottom d-flex align-items-center gap-2">
+                <i class="bi bi-activity text-primary"></i>
+                <span class="fw-semibold">Recent Movements</span>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_movements %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Product</th>
+                                <th>Warehouse</th>
+                                <th>Type</th>
+                                <th class="text-end">Qty</th>
+                                <th>User</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mv in recent_movements %}
+                            <tr>
+                                <td class="text-muted small text-nowrap">{{ mv.created_at|date:"d M Y H:i" }}</td>
+                                <td class="fw-medium">{{ mv.product.name }}</td>
+                                <td class="text-muted">{{ mv.warehouse.name }}</td>
+                                <td>
+                                    {% if mv.movement_type == 'IN' %}
+                                        <span class="badge movement-type-in">IN</span>
+                                    {% elif mv.movement_type == 'OUT' %}
+                                        <span class="badge movement-type-out">OUT</span>
+                                    {% elif mv.movement_type == 'TRANSFER' %}
+                                        <span class="badge movement-type-trf">TRANSFER</span>
+                                    {% else %}
+                                        <span class="badge movement-type-adj">{{ mv.movement_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end fw-semibold">{{ mv.quantity }}</td>
+                                <td class="text-muted small">{{ mv.performed_by|default:"—" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                    No recent movements
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Row 4: Stock by Warehouse ─────────────────────────── #}
+<div class="row g-3 mb-3">
+    <div class="col-12">
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-bar-chart text-primary"></i>
+                    <span class="fw-semibold">Stock by Warehouse</span>
+                </div>
+                <span class="text-muted small">Total units per location</span>
+            </div>
+            <div class="card-body p-0">
+                {% if stock_by_warehouse %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 25%;">Warehouse</th>
+                                <th style="width: 55%;">Stock Distribution</th>
+                                <th class="text-end" style="width: 20%;">Total Units</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for wh in stock_by_warehouse %}
+                            <tr>
+                                <td class="fw-medium text-nowrap">
+                                    <i class="bi bi-building me-1 text-muted"></i>
+                                    {{ wh.name }}
+                                </td>
+                                <td>
+                                    <div class="progress" style="height: 10px; background-color: #f1f5f9; border-radius: 6px;">
+                                        {% widthratio wh.total_stock max_stock 100 as bar_pct %}
+                                        <div class="progress-bar rounded" role="progressbar" 
+                                             style="width: {{ bar_pct }}%; background: linear-gradient(90deg, #3b82f6, #6366f1);" 
+                                             aria-valuenow="{{ wh.total_stock|default:0 }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="{{ max_stock }}">
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-end fw-bold">
+                                    <span class="badge bg-light text-dark border px-2 py-1">
+                                        {{ wh.total_stock|default:0|intcomma }} units
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-building fs-3 d-block mb-2"></i>
+                    No warehouse data
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{% endblock %}
