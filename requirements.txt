@@ -4,3 +4,4 @@ qrcode[pil]
 Pillow
 reportlab
 psycopg2-binary
+dj-database-url
