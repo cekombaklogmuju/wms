@@ -1,18 +1,13 @@
 import os
 import sys
 
-# Setup Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-import django
-django.setup()
-
-from django.core.management import call_command
-from django.contrib.auth.models import User
-from accounts.models import UserProfile
-from inventory.models import Category, Supplier, Warehouse, Product, Stock, StockMovement
-from decimal import Decimal
-
 def run_init():
+    from django.core.management import call_command
+    from django.contrib.auth.models import User
+    from accounts.models import UserProfile
+    from inventory.models import Category, Supplier, Warehouse, Product, Stock
+    from decimal import Decimal
+
     print("Running migrate...")
     call_command('migrate', interactive=False)
     
@@ -68,11 +63,6 @@ def run_init():
                     'is_active': True,
                 }
             )
-            try:
-                p.generate_barcode()
-                p.generate_qr_code()
-            except Exception:
-                pass
 
             Stock.objects.get_or_create(
                 product=p,
@@ -80,6 +70,12 @@ def run_init():
                 defaults={'quantity': 50, 'location_in_warehouse': 'Area Utama'}
             )
         print("Products seeded successfully!")
+
+if __name__ == '__main__':
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+    import django
+    django.setup()
+    run_init()
 
 if __name__ == '__main__':
     run_init()

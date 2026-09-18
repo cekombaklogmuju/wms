@@ -15,12 +15,21 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 application = get_wsgi_application()
 
-# Auto-migrate and seed for serverless cold-starts on Vercel / ephemeral environments
-if os.environ.get('VERCEL') or os.environ.get('AUTO_INIT_DB'):
-    try:
-        from init_db import run_init
-        run_init()
-    except Exception as e:
-        print(f"Auto-init error: {e}")
+_initialized = False
 
-app = application
+def init_once():
+    global _initialized
+    if _initialized:
+        return
+    _initialized = True
+    if os.environ.get('VERCEL') or os.environ.get('AUTO_INIT_DB'):
+        try:
+            from init_db import run_init
+            run_init()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+
+def app(environ, start_response):
+    init_once()
+    return application(environ, start_response)
