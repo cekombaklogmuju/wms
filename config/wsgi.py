@@ -14,4 +14,13 @@ from django.core.wsgi import get_wsgi_application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 application = get_wsgi_application()
+
+# Auto-migrate and seed for serverless cold-starts on Vercel / ephemeral environments
+if os.environ.get('VERCEL') or os.environ.get('AUTO_INIT_DB'):
+    try:
+        from init_db import run_init
+        run_init()
+    except Exception as e:
+        print(f"Auto-init error: {e}")
+
 app = application
